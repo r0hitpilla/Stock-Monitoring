@@ -4,6 +4,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Application configuration loaded from environment variables and/or a `.env` file."""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     database_url: str
@@ -20,4 +22,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
+    """Return a cached `Settings` instance, constructing it on first call."""
     return Settings()

@@ -7,6 +7,7 @@ from app.core.config import Settings
 
 
 def configure_logging(settings: Settings) -> None:
+    """Configure stdlib logging and structlog to emit structured JSON log lines."""
     logging.basicConfig(
         format="%(message)s", stream=sys.stdout, level=settings.log_level
     )
