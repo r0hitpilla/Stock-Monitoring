@@ -3,6 +3,7 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import structlog
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
@@ -14,6 +15,8 @@ from app.application.exceptions import (
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.infrastructure.db.session import get_engine, get_sessionmaker
+
+logger = structlog.get_logger(__name__)
 
 
 @asynccontextmanager
@@ -40,10 +43,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         try:
             await ensure_retailers_seeded(session)
-        except Exception:
+        except Exception as e:
             # Seeding may fail in test/dev environments where the database
             # schema is not yet initialized. This is expected and not fatal.
-            pass
+            # Log the failure so we don't silently ignore genuine startup issues.
+            logger.warning(
+                "retailer_seeding_failed",
+                error=str(e),
+                exc_info=True,
+            )
 
     yield
     await engine.dispose()
