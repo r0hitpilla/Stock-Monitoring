@@ -9,6 +9,7 @@ from app.domain.entities import (
     NotificationLog,
     OtpChallenge,
     ProviderProductResult,
+    Retailer,
     Snapshot,
     User,
     Watch,
@@ -271,6 +272,19 @@ class DetectionEventRepository(ABC):
         ...
 
 
+class RetailerRepository(ABC):
+    """Repository for managing retailers."""
+
+    @abstractmethod
+    async def list_all(self) -> list[Retailer]:
+        """List all retailers.
+
+        Returns:
+            A list of all retailers.
+        """
+        ...
+
+
 class WatchRepository(ABC):
     """Repository for managing user watches."""
 
@@ -283,6 +297,18 @@ class WatchRepository(ABC):
 
         Returns:
             A list of watches for the target.
+        """
+        ...
+
+    @abstractmethod
+    async def get_by_id(self, watch_id: int) -> Watch | None:
+        """Get a watch by ID.
+
+        Args:
+            watch_id: The watch ID.
+
+        Returns:
+            The watch entity or None if not found.
         """
         ...
 

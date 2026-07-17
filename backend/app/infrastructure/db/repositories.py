@@ -11,6 +11,7 @@ from app.domain.entities import (
     NotificationLog,
     OtpChallenge,
     ProviderProductResult,
+    Retailer,
     Snapshot,
     User,
     Watch,
@@ -22,6 +23,7 @@ from app.domain.ports.repositories import (
     NotificationChannelRepository,
     NotificationLogRepository,
     OtpChallengeRepository,
+    RetailerRepository,
     SnapshotRepository,
     UserRepository,
     WatchRepository,
@@ -32,6 +34,7 @@ from app.infrastructure.db.models import (
     NotificationChannelModel,
     NotificationLogModel,
     OtpChallengeModel,
+    RetailerModel,
     SnapshotModel,
     UserModel,
     WatchModel,
@@ -59,6 +62,16 @@ def _to_otp_challenge(model: OtpChallengeModel) -> OtpChallenge:
         created_at=model.created_at,
         consumed=model.consumed,
         attempt_count=model.attempt_count,
+    )
+
+
+def _to_retailer(model: RetailerModel) -> Retailer:
+    """Convert a RetailerModel to a Retailer entity."""
+    return Retailer(
+        id=model.id,
+        slug=model.slug,
+        name=model.name,
+        is_active=model.is_active,
     )
 
 
@@ -161,6 +174,24 @@ class SqlAlchemyOtpChallengeRepository(OtpChallengeRepository):
         stmt = select(OtpChallengeModel).where(OtpChallengeModel.id == challenge_id)
         model = (await self._session.execute(stmt)).scalar_one()
         model.attempt_count += 1
+
+
+class SqlAlchemyRetailerRepository(RetailerRepository):
+    """SQLAlchemy implementation of RetailerRepository."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        """Initialize with an async session.
+
+        Args:
+            session: The SQLAlchemy async session.
+        """
+        self._session = session
+
+    async def list_all(self) -> list[Retailer]:
+        """List all retailers."""
+        stmt = select(RetailerModel)
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [_to_retailer(m) for m in models]
 
 
 def _to_watch_target(model: WatchTargetModel) -> WatchTarget:
@@ -450,6 +481,21 @@ class SqlAlchemyWatchRepository(WatchRepository):
             )
             for m in models
         ]
+
+    async def get_by_id(self, watch_id: int) -> Watch | None:
+        """Get a watch by ID."""
+        stmt = select(WatchModel).where(WatchModel.id == watch_id)
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        if model is None:
+            return None
+        return Watch(
+            id=model.id,
+            user_id=model.user_id,
+            product_id=model.product_id,
+            watch_target_id=model.watch_target_id,
+            interval_seconds=model.interval_seconds,
+            is_active=model.is_active,
+        )
 
 
 class SqlAlchemyNotificationChannelRepository(NotificationChannelRepository):

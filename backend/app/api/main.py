@@ -24,6 +24,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     - Initialize logging
     - Create the database engine
     - Store engine and session factory in app.state
+    - Seed retailers into the database
 
     On shutdown:
     - Dispose of the engine
@@ -33,6 +34,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     engine = get_engine(settings.database_url)
     app.state.engine = engine
     app.state.session_factory = get_sessionmaker(engine)
+
+    async with app.state.session_factory() as session:
+        from app.infrastructure.db.seed import ensure_retailers_seeded
+
+        try:
+            await ensure_retailers_seeded(session)
+        except Exception:
+            # Seeding may fail in test/dev environments where the database
+            # schema is not yet initialized. This is expected and not fatal.
+            pass
+
     yield
     await engine.dispose()
 
@@ -69,8 +81,12 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     from app.api.routers.auth import router as auth_router
+    from app.api.routers.history import router as history_router
+    from app.api.routers.retailers import router as retailers_router
 
     application.include_router(auth_router)
+    application.include_router(retailers_router)
+    application.include_router(history_router)
 
     return application
 

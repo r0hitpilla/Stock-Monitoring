@@ -152,3 +152,13 @@ class NotificationContext:
     retailer_slug: str
     event_type: EventType
     snapshot: "Snapshot"
+
+
+@dataclass
+class Retailer:
+    """A supported retailer configuration."""
+
+    id: int | None
+    slug: str
+    name: str
+    is_active: bool = True
