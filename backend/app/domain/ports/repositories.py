@@ -7,12 +7,110 @@ from app.domain.entities import (
     DetectionEvent,
     NotificationChannel,
     NotificationLog,
+    OtpChallenge,
     ProviderProductResult,
     Snapshot,
+    User,
     Watch,
     WatchTarget,
 )
 from app.domain.enums import EventType
+
+
+class UserRepository(ABC):
+    """Repository for managing user accounts."""
+
+    @abstractmethod
+    async def get_or_create_by_phone(self, phone_number: str) -> User:
+        """Get an existing user by phone number, or create one.
+
+        Args:
+            phone_number: The user's phone number.
+
+        Returns:
+            The existing or newly created user entity.
+        """
+        ...
+
+    @abstractmethod
+    async def get_by_id(self, user_id: int) -> User | None:
+        """Get a user by ID.
+
+        Args:
+            user_id: The user ID.
+
+        Returns:
+            The user entity or None if not found.
+        """
+        ...
+
+
+class OtpChallengeRepository(ABC):
+    """Repository for managing OTP challenges."""
+
+    @abstractmethod
+    async def create(
+        self,
+        phone_number: str,
+        code_hash: str,
+        expires_at: datetime,
+        created_at: datetime,
+    ) -> OtpChallenge:
+        """Create a new OTP challenge.
+
+        Args:
+            phone_number: The phone number the challenge is for.
+            code_hash: The hashed OTP code.
+            expires_at: When the challenge expires.
+            created_at: When the challenge was created.
+
+        Returns:
+            The created OTP challenge entity.
+        """
+        ...
+
+    @abstractmethod
+    async def get_latest(self, phone_number: str) -> OtpChallenge | None:
+        """Get the most recently created OTP challenge for a phone number.
+
+        Args:
+            phone_number: The phone number to look up.
+
+        Returns:
+            The latest OTP challenge, or None if none exist.
+        """
+        ...
+
+    @abstractmethod
+    async def count_recent(self, phone_number: str, window_seconds: int) -> int:
+        """Count OTP challenges created for a phone number within a time window.
+
+        Args:
+            phone_number: The phone number to look up.
+            window_seconds: The size of the recency window, in seconds.
+
+        Returns:
+            The number of challenges created within the window.
+        """
+        ...
+
+    @abstractmethod
+    async def mark_consumed(self, challenge_id: int) -> None:
+        """Mark an OTP challenge as consumed.
+
+        Args:
+            challenge_id: The OTP challenge ID.
+        """
+        ...
+
+    @abstractmethod
+    async def increment_attempt(self, challenge_id: int) -> None:
+        """Increment the attempt count of an OTP challenge.
+
+        Args:
+            challenge_id: The OTP challenge ID.
+        """
+        ...
 
 
 class WatchTargetRepository(ABC):

@@ -9,8 +9,10 @@ from app.domain.entities import (
     DetectionEvent,
     NotificationChannel,
     NotificationLog,
+    OtpChallenge,
     ProviderProductResult,
     Snapshot,
+    User,
     Watch,
     WatchTarget,
 )
@@ -19,7 +21,9 @@ from app.domain.ports.repositories import (
     DetectionEventRepository,
     NotificationChannelRepository,
     NotificationLogRepository,
+    OtpChallengeRepository,
     SnapshotRepository,
+    UserRepository,
     WatchRepository,
     WatchTargetRepository,
 )
@@ -27,10 +31,136 @@ from app.infrastructure.db.models import (
     DetectionEventModel,
     NotificationChannelModel,
     NotificationLogModel,
+    OtpChallengeModel,
     SnapshotModel,
+    UserModel,
     WatchModel,
     WatchTargetModel,
 )
+
+
+def _to_user(model: UserModel) -> User:
+    """Convert a UserModel to a User entity."""
+    return User(
+        id=model.id,
+        phone_number=model.phone_number,
+        email=model.email,
+        created_at=model.created_at,
+    )
+
+
+def _to_otp_challenge(model: OtpChallengeModel) -> OtpChallenge:
+    """Convert an OtpChallengeModel to an OtpChallenge entity."""
+    return OtpChallenge(
+        id=model.id,
+        phone_number=model.phone_number,
+        code_hash=model.code_hash,
+        expires_at=model.expires_at,
+        created_at=model.created_at,
+        consumed=model.consumed,
+        attempt_count=model.attempt_count,
+    )
+
+
+class SqlAlchemyUserRepository(UserRepository):
+    """SQLAlchemy implementation of UserRepository."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        """Initialize with an async session.
+
+        Args:
+            session: The SQLAlchemy async session.
+        """
+        self._session = session
+
+    async def get_or_create_by_phone(self, phone_number: str) -> User:
+        """Get an existing user by phone number, or create one."""
+        stmt = select(UserModel).where(UserModel.phone_number == phone_number)
+        existing = (await self._session.execute(stmt)).scalar_one_or_none()
+        if existing is not None:
+            return _to_user(existing)
+
+        model = UserModel(
+            phone_number=phone_number,
+            email=None,
+            created_at=datetime.now(timezone.utc),
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return _to_user(model)
+
+    async def get_by_id(self, user_id: int) -> User | None:
+        """Get a user by ID."""
+        stmt = select(UserModel).where(UserModel.id == user_id)
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        if model is None:
+            return None
+        return _to_user(model)
+
+
+class SqlAlchemyOtpChallengeRepository(OtpChallengeRepository):
+    """SQLAlchemy implementation of OtpChallengeRepository."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        """Initialize with an async session.
+
+        Args:
+            session: The SQLAlchemy async session.
+        """
+        self._session = session
+
+    async def create(
+        self,
+        phone_number: str,
+        code_hash: str,
+        expires_at: datetime,
+        created_at: datetime,
+    ) -> OtpChallenge:
+        """Create a new OTP challenge."""
+        model = OtpChallengeModel(
+            phone_number=phone_number,
+            code_hash=code_hash,
+            expires_at=expires_at,
+            created_at=created_at,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return _to_otp_challenge(model)
+
+    async def get_latest(self, phone_number: str) -> OtpChallenge | None:
+        """Get the most recently created OTP challenge for a phone number."""
+        stmt = (
+            select(OtpChallengeModel)
+            .where(OtpChallengeModel.phone_number == phone_number)
+            .order_by(OtpChallengeModel.created_at.desc())
+            .limit(1)
+        )
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        if model is None:
+            return None
+        return _to_otp_challenge(model)
+
+    async def count_recent(self, phone_number: str, window_seconds: int) -> int:
+        """Count OTP challenges created for a phone number within a time window."""
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=window_seconds)
+        stmt = select(OtpChallengeModel).where(
+            OtpChallengeModel.phone_number == phone_number,
+            OtpChallengeModel.created_at >= cutoff,
+        )
+        models = (await self._session.execute(stmt)).scalars().all()
+        return len(models)
+
+    async def mark_consumed(self, challenge_id: int) -> None:
+        """Mark an OTP challenge as consumed."""
+        stmt = select(OtpChallengeModel).where(OtpChallengeModel.id == challenge_id)
+        model = (await self._session.execute(stmt)).scalar_one()
+        model.consumed = True
+
+    async def increment_attempt(self, challenge_id: int) -> None:
+        """Increment the attempt count of an OTP challenge."""
+        stmt = select(OtpChallengeModel).where(OtpChallengeModel.id == challenge_id)
+        model = (await self._session.execute(stmt)).scalar_one()
+        model.attempt_count += 1
 
 
 def _to_watch_target(model: WatchTargetModel) -> WatchTarget:

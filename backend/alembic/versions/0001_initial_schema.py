@@ -28,6 +28,7 @@ def upgrade() -> None:
         sa.Column("phone_number", sa.String, index=True, nullable=False),
         sa.Column("code_hash", sa.String, nullable=False),
         sa.Column("expires_at", sa.DateTime, nullable=False),
+        sa.Column("created_at", sa.DateTime, nullable=False),
         sa.Column("consumed", sa.Boolean, default=False, nullable=False),
         sa.Column("attempt_count", sa.Integer, default=0, nullable=False),
     )

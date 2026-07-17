@@ -29,6 +29,7 @@ class OtpChallengeModel(Base):
     phone_number: Mapped[str] = mapped_column(index=True)
     code_hash: Mapped[str]
     expires_at: Mapped[datetime]
+    created_at: Mapped[datetime]
     consumed: Mapped[bool] = mapped_column(default=False)
     attempt_count: Mapped[int] = mapped_column(default=0)
 

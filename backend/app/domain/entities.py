@@ -114,6 +114,37 @@ class NotificationLog:
 
 
 @dataclass
+class User:
+    """A registered user identified by phone number."""
+
+    id: int | None
+    phone_number: str
+    email: str | None
+    created_at: datetime
+
+
+@dataclass
+class OtpChallenge:
+    """A one-time-password challenge issued for phone verification."""
+
+    id: int | None
+    phone_number: str
+    code_hash: str
+    expires_at: datetime
+    created_at: datetime
+    consumed: bool = False
+    attempt_count: int = 0
+
+
+@dataclass
+class TokenPair:
+    """An access/refresh JWT pair issued after successful authentication."""
+
+    access_token: str
+    refresh_token: str
+
+
+@dataclass
 class NotificationContext:
     """Context needed by a notification sender to compose a message."""
 
