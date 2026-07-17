@@ -389,6 +389,18 @@ class WatchRepository(ABC):
         ...
 
     @abstractmethod
+    async def list_by_product(self, product_id: int) -> list[Watch]:
+        """List active watches for a product.
+
+        Args:
+            product_id: The product ID.
+
+        Returns:
+            A list of active watches for the product.
+        """
+        ...
+
+    @abstractmethod
     async def list_for_user(self, user_id: int) -> list[Watch]:
         """List watches for a user.
 

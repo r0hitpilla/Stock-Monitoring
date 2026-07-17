@@ -598,6 +598,15 @@ class SqlAlchemyWatchRepository(WatchRepository):
         models = (await self._session.execute(stmt)).scalars().all()
         return [_to_watch(m) for m in models]
 
+    async def list_by_product(self, product_id: int) -> list[Watch]:
+        """List active watches for a product."""
+        stmt = select(WatchModel).where(
+            WatchModel.product_id == product_id,
+            WatchModel.is_active.is_(True),
+        )
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [_to_watch(m) for m in models]
+
     async def list_for_user(self, user_id: int) -> list[Watch]:
         """List watches for a user."""
         stmt = select(WatchModel).where(WatchModel.user_id == user_id)

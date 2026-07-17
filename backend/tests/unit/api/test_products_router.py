@@ -2,8 +2,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.deps import get_current_user_id
-from app.api.routers.products import get_product_repository, router
-from app.domain.entities import Product
+from app.api.routers.products import (
+    get_product_repository,
+    get_watch_repository,
+    router,
+)
+from app.domain.entities import Product, Watch
 
 
 class FakeProductRepo:
@@ -35,11 +39,24 @@ class FakeProductRepo:
         self._products.pop(product_id, None)
 
 
-def _build_app(repo: FakeProductRepo, user_id: int = 10) -> FastAPI:
+class FakeWatchRepo:
+    def __init__(self, watches: list[Watch] | None = None) -> None:
+        self._watches = watches or []
+
+    async def list_by_product(self, product_id: int) -> list[Watch]:
+        return [w for w in self._watches if w.product_id == product_id]
+
+
+def _build_app(
+    repo: FakeProductRepo,
+    user_id: int = 10,
+    watch_repo: FakeWatchRepo | None = None,
+) -> FastAPI:
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_current_user_id] = lambda: user_id
     app.dependency_overrides[get_product_repository] = lambda: repo
+    app.dependency_overrides[get_watch_repository] = lambda: watch_repo or FakeWatchRepo()
     return app
 
 
@@ -67,3 +84,27 @@ def test_delete_product_owned_by_someone_else_returns_404():
     response = client_other.delete("/api/v1/products/1")
 
     assert response.status_code == 404
+
+
+def test_delete_product_with_active_watches_returns_409():
+    repo = FakeProductRepo()
+    watch_repo = FakeWatchRepo(
+        [Watch(id=1, user_id=1, product_id=1, watch_target_id=1, interval_seconds=300)]
+    )
+    client = TestClient(_build_app(repo, user_id=1, watch_repo=watch_repo))
+    client.post("/api/v1/products", json={"name": "Milk", "keyword": "milk"})
+
+    response = client.delete("/api/v1/products/1")
+
+    assert response.status_code == 409
+
+
+def test_delete_product_with_no_watches_succeeds():
+    repo = FakeProductRepo()
+    watch_repo = FakeWatchRepo([])
+    client = TestClient(_build_app(repo, user_id=1, watch_repo=watch_repo))
+    client.post("/api/v1/products", json={"name": "Milk", "keyword": "milk"})
+
+    response = client.delete("/api/v1/products/1")
+
+    assert response.status_code == 204

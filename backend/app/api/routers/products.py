@@ -4,8 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_user_id, get_session
 from app.api.schemas.products import ProductCreateSchema, ProductSchema
-from app.domain.ports.repositories import ProductRepository
-from app.infrastructure.db.repositories import SqlAlchemyProductRepository
+from app.domain.ports.repositories import ProductRepository, WatchRepository
+from app.infrastructure.db.repositories import (
+    SqlAlchemyProductRepository,
+    SqlAlchemyWatchRepository,
+)
 
 router = APIRouter(prefix="/api/v1/products", tags=["products"])
 
@@ -14,6 +17,12 @@ def get_product_repository(
     session: AsyncSession = Depends(get_session),
 ) -> ProductRepository:
     return SqlAlchemyProductRepository(session)
+
+
+def get_watch_repository(
+    session: AsyncSession = Depends(get_session),
+) -> WatchRepository:
+    return SqlAlchemyWatchRepository(session)
 
 
 @router.post("", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
@@ -55,8 +64,15 @@ async def delete_product(
     product_id: int,
     user_id: int = Depends(get_current_user_id),
     repo: ProductRepository = Depends(get_product_repository),
+    watch_repo: WatchRepository = Depends(get_watch_repository),
 ) -> None:
     product = await repo.get_by_id(product_id)
     if product is None or product.user_id != user_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
+    active_watches = await watch_repo.list_by_product(product_id)
+    if active_watches:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Cannot delete a product with active watches; remove its watches first",
+        )
     await repo.delete(product_id)
