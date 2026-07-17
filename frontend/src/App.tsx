@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Navigate, Route, BrowserRouter, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
+import History from "./pages/History";
 import Login from "./pages/Login";
 import Products from "./pages/Products";
 import Retailers from "./pages/Retailers";
@@ -40,6 +41,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <Retailers />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              <RequireAuth>
+                <History />
               </RequireAuth>
             }
           />
