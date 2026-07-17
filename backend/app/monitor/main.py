@@ -23,6 +23,7 @@ from app.infrastructure.db.repositories import (
     SqlAlchemyWatchTargetRepository,
 )
 from app.infrastructure.db.session import get_engine, get_sessionmaker
+from app.infrastructure.providers.bigbasket.provider import BigBasketProvider
 from app.infrastructure.providers.blinkit.provider import BlinkitProvider
 from app.infrastructure.providers.instamart.provider import InstamartProvider
 from app.infrastructure.providers.registry import InMemoryProviderRegistry
@@ -46,6 +47,7 @@ async def main() -> None:
             "blinkit": BlinkitProvider,
             "zepto": ZeptoProvider,
             "instamart": InstamartProvider,
+            "bigbasket": BigBasketProvider,
         }
     )
 
