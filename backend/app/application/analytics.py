@@ -1,3 +1,5 @@
+"""Pure business logic for availability and restock analytics."""
+
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -7,6 +9,15 @@ from app.domain.enums import EventType
 
 @dataclass
 class AvailabilitySummary:
+    """Aggregate availability/restock metrics for a watch over a period.
+
+    Attributes:
+        availability_pct: Percentage of the period the product was in stock.
+        restock_count: Number of times the product transitioned back to available.
+        total_downtime_minutes: Total minutes spent out of stock in the period.
+        average_downtime_minutes: Mean length of each downtime window, in minutes.
+    """
+
     availability_pct: float
     restock_count: int
     total_downtime_minutes: float
@@ -16,6 +27,23 @@ class AvailabilitySummary:
 def compute_availability_summary(
     events: list[DetectionEvent], period_start: datetime, period_end: datetime
 ) -> AvailabilitySummary:
+    """Compute availability/restock metrics from a list of detection events.
+
+    Walks OUT_OF_STOCK -> STOCK_AVAILABLE event pairs to build downtime windows.
+    An unclosed trailing OUT_OF_STOCK event counts as down until `period_end`.
+    This is a pure function with no I/O; callers are responsible for scoping
+    `events` to the `[period_start, period_end]` window before calling it.
+
+    Args:
+        events: Detection events to analyze. Should already be scoped to the
+            period of interest; events outside `[period_start, period_end]`
+            are not filtered out by this function.
+        period_start: The start of the period being summarized.
+        period_end: The end of the period being summarized.
+
+    Returns:
+        The computed AvailabilitySummary.
+    """
     sorted_events = sorted(events, key=lambda e: e.created_at)
 
     downtime_periods: list[tuple[datetime, datetime]] = []
