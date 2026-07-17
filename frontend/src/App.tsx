@@ -3,6 +3,7 @@ import { Navigate, Route, BrowserRouter, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Products from "./pages/Products";
+import Retailers from "./pages/Retailers";
 import { useAuthStore } from "./store/authStore";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <Products />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/retailers"
+            element={
+              <RequireAuth>
+                <Retailers />
               </RequireAuth>
             }
           />
