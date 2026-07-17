@@ -3,6 +3,7 @@ import { Navigate, Route, BrowserRouter, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import History from "./pages/History";
 import Login from "./pages/Login";
+import Notifications from "./pages/Notifications";
 import Products from "./pages/Products";
 import Retailers from "./pages/Retailers";
 import { useAuthStore } from "./store/authStore";
@@ -49,6 +50,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <History />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <RequireAuth>
+                <Notifications />
               </RequireAuth>
             }
           />
