@@ -1,0 +1,16 @@
+ZEPTO_SELECTORS = {
+    "location_trigger": "[data-test-id='select-location']",
+    "location_input": "[data-test-id='location-search-input']",
+    "location_confirm": "[data-test-id='location-confirm']",
+    "search_result_card": "[data-test-id='plp-product-card'] a",
+    "product_name": "[data-test-id='pdp-product-name']",
+    "price": "[data-test-id='pdp-product-price']",
+    "mrp": "[data-test-id='pdp-product-mrp']",
+    "eta": "[data-test-id='pdp-eta']",
+    "store": "[data-test-id='pdp-store-name']",
+    "image": "[data-test-id='pdp-product-image'] img",
+    "quantity": "[data-test-id='pdp-product-quantity']",
+    "variants": "[data-test-id='pdp-variant']",
+    "out_of_stock_badge": "[data-test-id='pdp-sold-out']",
+    "low_stock_badge": "[data-test-id='pdp-low-stock']",
+}

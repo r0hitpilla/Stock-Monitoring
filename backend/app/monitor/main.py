@@ -25,6 +25,7 @@ from app.infrastructure.db.repositories import (
 from app.infrastructure.db.session import get_engine, get_sessionmaker
 from app.infrastructure.providers.blinkit.provider import BlinkitProvider
 from app.infrastructure.providers.registry import InMemoryProviderRegistry
+from app.infrastructure.providers.zepto.provider import ZeptoProvider
 from app.infrastructure.tasks_dispatch import CeleryTaskDispatcher
 from app.monitor.scheduler import Scheduler
 
@@ -39,7 +40,9 @@ async def main() -> None:
     redis_client = redis.from_url(settings.redis_url)
     celery_app = Celery("monitor", broker=settings.redis_url)
 
-    provider_registry = InMemoryProviderRegistry({"blinkit": BlinkitProvider})
+    provider_registry = InMemoryProviderRegistry(
+        {"blinkit": BlinkitProvider, "zepto": ZeptoProvider}
+    )
 
     async with session_factory() as session:
         scheduler = Scheduler(
