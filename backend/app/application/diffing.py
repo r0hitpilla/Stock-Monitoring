@@ -23,7 +23,7 @@ def diff_snapshots(
     events: list[EventType] = []
 
     previous_availability = (
-        previous.availability if previous else Availability.OUT_OF_STOCK
+        previous.availability if previous is not None else Availability.OUT_OF_STOCK
     )
 
     if previous_availability == Availability.OUT_OF_STOCK and current.availability in (
