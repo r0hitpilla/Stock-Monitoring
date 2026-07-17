@@ -24,6 +24,7 @@ from app.infrastructure.db.repositories import (
 )
 from app.infrastructure.db.session import get_engine, get_sessionmaker
 from app.infrastructure.providers.blinkit.provider import BlinkitProvider
+from app.infrastructure.providers.instamart.provider import InstamartProvider
 from app.infrastructure.providers.registry import InMemoryProviderRegistry
 from app.infrastructure.providers.zepto.provider import ZeptoProvider
 from app.infrastructure.tasks_dispatch import CeleryTaskDispatcher
@@ -41,7 +42,11 @@ async def main() -> None:
     celery_app = Celery("monitor", broker=settings.redis_url)
 
     provider_registry = InMemoryProviderRegistry(
-        {"blinkit": BlinkitProvider, "zepto": ZeptoProvider}
+        {
+            "blinkit": BlinkitProvider,
+            "zepto": ZeptoProvider,
+            "instamart": InstamartProvider,
+        }
     )
 
     async with session_factory() as session:
