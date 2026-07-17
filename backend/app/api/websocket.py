@@ -1,9 +1,8 @@
 """WebSocket route streaming live detection events to authenticated clients."""
 
-from typing import AsyncIterator
-
 import structlog
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_auth_service
 from app.application.auth_service import AuthService
@@ -17,21 +16,25 @@ logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 
-async def get_watch_repository(websocket: WebSocket) -> AsyncIterator[WatchRepository]:
-    """Yield a `WatchRepository` backed by a session from the app-wide session factory.
+def get_watch_repository(session: AsyncSession) -> WatchRepository:
+    """Build a `WatchRepository` bound to the given session.
+
+    Not a FastAPI dependency: constructing a repository does no I/O of its
+    own, so this is called directly inside `websocket_endpoint`, within a
+    short-lived `async with session_factory() as session:` block scoped
+    tightly around the one `list_for_user` lookup. That keeps the DB
+    session (and its pooled connection) held only for that lookup rather
+    than for the WebSocket connection's full, potentially long-lived,
+    streaming lifetime.
 
     Args:
-        websocket: The connecting WebSocket, used to reach the shared
-            `session_factory` built once at app startup (see `app.api.main.lifespan`).
+        session: A session from the app-wide session factory (see
+            `app.api.main.lifespan`).
 
-    Yields:
-        A `SqlAlchemyWatchRepository` bound to a session that is closed
-        when the dependency scope exits. The underlying engine/connection
-        pool is reused across connections rather than rebuilt per-connection.
+    Returns:
+        A `SqlAlchemyWatchRepository` bound to `session`.
     """
-    session_factory = websocket.app.state.session_factory
-    async with session_factory() as session:
-        yield SqlAlchemyWatchRepository(session)
+    return SqlAlchemyWatchRepository(session)
 
 
 def get_redis_subscriber(websocket: WebSocket) -> RedisSubscriber:
@@ -57,7 +60,6 @@ async def websocket_endpoint(
     websocket: WebSocket,
     token: str = Query(...),
     auth_service: AuthService = Depends(get_auth_service),
-    watch_repo: WatchRepository = Depends(get_watch_repository),
     subscriber: RedisSubscriber = Depends(get_redis_subscriber),
 ) -> None:
     """Stream live detection events for the authenticated caller's watches.
@@ -70,11 +72,16 @@ async def websocket_endpoint(
     caller's own watch-target channels) to the client as JSON until the
     client disconnects.
 
+    The watch lookup opens its own short-lived DB session (via
+    `websocket.app.state.session_factory`) that is closed immediately after
+    the lookup, well before the long-lived streaming loop begins, so the
+    connection's pooled DB session isn't held for the WebSocket's full
+    lifetime.
+
     Args:
         websocket: The incoming WebSocket connection.
         token: The caller's JWT access token, passed as a query parameter.
         auth_service: Service used to verify the access token.
-        watch_repo: Repository used to load the caller's watches.
         subscriber: Subscriber used to consume live detection events.
     """
     try:
@@ -84,7 +91,11 @@ async def websocket_endpoint(
         await websocket.close(code=4401)
         return
 
-    watches = await watch_repo.list_for_user(user_id)
+    session_factory = websocket.app.state.session_factory
+    async with session_factory() as session:
+        watch_repo = get_watch_repository(session)
+        watches = await watch_repo.list_for_user(user_id)
+
     if not watches:
         logger.info("websocket_rejected_no_active_watches", user_id=user_id)
         await websocket.close(code=4404)
