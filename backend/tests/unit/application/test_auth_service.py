@@ -1,10 +1,9 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import pytest
 
 from app.application.auth_service import AuthService
 from app.application.exceptions import InvalidOtpError, RateLimitExceededError
-from app.core.security import hash_otp_code
 from app.domain.entities import OtpChallenge, User
 
 

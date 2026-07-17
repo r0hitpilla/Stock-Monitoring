@@ -8,7 +8,6 @@ from app.api.routers.notifications import (
     router,
 )
 from app.domain.entities import NotificationChannel
-from app.domain.enums import NotificationChannelType
 
 
 class FakeChannelRepo:

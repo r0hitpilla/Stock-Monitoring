@@ -1,11 +1,11 @@
 """Regression test for ErrorLoggingMiddleware logging and exception re-raising."""
 
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.future import select
 
 from app.api.error_logging_middleware import ErrorLoggingMiddleware
