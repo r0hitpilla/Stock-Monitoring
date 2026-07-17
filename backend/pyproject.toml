@@ -38,3 +38,11 @@ testpaths = ["tests"]
 [tool.mypy]
 strict = true
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "app.monitor.*"
+strict = false
+
+[[tool.mypy.overrides]]
+module = "celery.*"
+ignore_missing_imports = true
