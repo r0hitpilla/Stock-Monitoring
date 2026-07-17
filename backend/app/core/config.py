@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     smtp_username: str = ""
     smtp_password: str = ""
     smtp_from_address: str = ""
+    cors_origins: str = "http://localhost:5173"
 
 
 @lru_cache

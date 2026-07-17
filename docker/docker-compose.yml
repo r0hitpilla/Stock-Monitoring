@@ -55,7 +55,7 @@ services:
     build:
       context: ../backend
     env_file: .env
-    command: ["celery", "-A", "app.tasks.celery_app", "worker", "--loglevel=info"]
+    command: ["celery", "-A", "app.tasks.celery_app", "worker", "--loglevel=info", "-Q", "celery,notifications"]
     depends_on:
       postgres:
         condition: service_healthy

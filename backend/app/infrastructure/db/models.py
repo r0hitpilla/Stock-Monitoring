@@ -1,12 +1,12 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import ForeignKey, JSON, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
-    pass
+    type_annotation_map = {datetime: DateTime(timezone=True)}
 
 
 class UserModel(Base):

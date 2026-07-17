@@ -12,7 +12,12 @@ def create_celery_app() -> Celery:
         Configured Celery application instance.
     """
     settings = get_settings()
-    app = Celery("inventory_monitor", broker=settings.redis_url, backend=settings.redis_url)
+    app = Celery(
+        "inventory_monitor",
+        broker=settings.redis_url,
+        backend=settings.redis_url,
+        include=["app.tasks.notifications"],
+    )
     app.conf.task_routes = {"app.tasks.notifications.*": {"queue": "notifications"}}
     return app
 

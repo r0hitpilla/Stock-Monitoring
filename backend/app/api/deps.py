@@ -27,6 +27,7 @@ async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
     """
     async with request.app.state.session_factory() as session:
         yield session
+        await session.commit()
 
 
 def get_otp_provider(settings: Settings = Depends(get_settings)) -> OtpProvider:

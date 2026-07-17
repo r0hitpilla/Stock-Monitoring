@@ -20,15 +20,15 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("phone_number", sa.String, unique=True, index=True, nullable=False),
         sa.Column("email", sa.String, nullable=True),
-        sa.Column("created_at", sa.DateTime, nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_table(
         "otp_challenges",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("phone_number", sa.String, index=True, nullable=False),
         sa.Column("code_hash", sa.String, nullable=False),
-        sa.Column("expires_at", sa.DateTime, nullable=False),
-        sa.Column("created_at", sa.DateTime, nullable=False),
+        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("consumed", sa.Boolean, default=False, nullable=False),
         sa.Column("attempt_count", sa.Integer, default=0, nullable=False),
     )
@@ -55,7 +55,7 @@ def upgrade() -> None:
         sa.Column("pincode", sa.String, nullable=False),
         sa.Column("keyword", sa.String, nullable=False),
         sa.Column("interval_seconds", sa.Integer, default=300, nullable=False),
-        sa.Column("last_checked_at", sa.DateTime, nullable=True),
+        sa.Column("last_checked_at", sa.DateTime(timezone=True), nullable=True),
         sa.UniqueConstraint(
             "retailer_slug", "city", "pincode", "keyword", name="uq_watch_target"
         ),
@@ -86,7 +86,7 @@ def upgrade() -> None:
             nullable=False,
             index=True,
         ),
-        sa.Column("timestamp", sa.DateTime, nullable=False),
+        sa.Column("timestamp", sa.DateTime(timezone=True), nullable=False),
         sa.Column("availability", sa.String, nullable=False),
         sa.Column("price", sa.Float, nullable=True),
         sa.Column("mrp", sa.Float, nullable=True),
@@ -118,7 +118,7 @@ def upgrade() -> None:
             nullable=True,
         ),
         sa.Column("event_type", sa.String, nullable=False),
-        sa.Column("created_at", sa.DateTime, nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_table(
         "notification_channels",
@@ -145,7 +145,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("status", sa.String, nullable=False),
-        sa.Column("sent_at", sa.DateTime, nullable=False),
+        sa.Column("sent_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("dedup_key", sa.String, nullable=False, index=True),
     )
     op.create_table(
@@ -161,7 +161,7 @@ def upgrade() -> None:
         sa.Column("level", sa.String, nullable=False),
         sa.Column("message", sa.String, nullable=False),
         sa.Column("context", sa.JSON, nullable=False, default=dict),
-        sa.Column("created_at", sa.DateTime, nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
 
 

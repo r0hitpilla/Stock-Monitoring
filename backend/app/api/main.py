@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 import redis.asyncio as redis
 import structlog
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.application.exceptions import (
@@ -69,6 +70,16 @@ def create_app() -> FastAPI:
         A configured FastAPI instance with exception handlers and the health endpoint.
     """
     application = FastAPI(title="Multi-Retailer Inventory Monitor", lifespan=lifespan)
+
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            origin.strip() for origin in get_settings().cors_origins.split(",")
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @application.exception_handler(InvalidOtpError)
     async def _invalid_otp(request: Request, exc: InvalidOtpError) -> JSONResponse:
