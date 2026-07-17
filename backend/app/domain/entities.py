@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel
 
-from app.domain.enums import Availability, EventType
+from app.domain.enums import Availability, EventType, NotificationChannelType
 
 
 @dataclass(frozen=True)
@@ -74,3 +75,49 @@ class DetectionEvent:
     previous_snapshot_id: int | None
     event_type: EventType
     created_at: datetime
+
+
+@dataclass
+class Watch:
+    """A user's watch for a product at a location."""
+
+    id: int | None
+    user_id: int
+    product_id: int
+    watch_target_id: int
+    interval_seconds: int
+    is_active: bool = True
+
+
+@dataclass
+class NotificationChannel:
+    """A user's notification delivery channel."""
+
+    id: int | None
+    user_id: int
+    type: NotificationChannelType
+    config: dict[str, Any]
+    is_verified: bool = False
+
+
+@dataclass
+class NotificationLog:
+    """Log of a sent notification."""
+
+    id: int | None
+    user_id: int
+    detection_event_id: int
+    channel_id: int
+    status: str
+    sent_at: datetime
+    dedup_key: str
+
+
+@dataclass
+class NotificationContext:
+    """Context needed by a notification sender to compose a message."""
+
+    keyword: str
+    retailer_slug: str
+    event_type: EventType
+    snapshot: "Snapshot"

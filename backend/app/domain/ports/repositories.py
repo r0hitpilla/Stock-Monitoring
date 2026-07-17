@@ -5,8 +5,11 @@ from datetime import datetime
 
 from app.domain.entities import (
     DetectionEvent,
+    NotificationChannel,
+    NotificationLog,
     ProviderProductResult,
     Snapshot,
+    Watch,
     WatchTarget,
 )
 from app.domain.enums import EventType
@@ -35,6 +38,18 @@ class WatchTargetRepository(ABC):
 
         Returns:
             The watch target entity.
+        """
+        ...
+
+    @abstractmethod
+    async def get_by_id(self, watch_target_id: int) -> WatchTarget | None:
+        """Get a watch target by ID.
+
+        Args:
+            watch_target_id: The watch target ID.
+
+        Returns:
+            The watch target entity or None if not found.
         """
         ...
 
@@ -73,6 +88,18 @@ class SnapshotRepository(ABC):
 
         Returns:
             The latest snapshot or None if no snapshots exist.
+        """
+        ...
+
+    @abstractmethod
+    async def get_by_id(self, snapshot_id: int) -> Snapshot | None:
+        """Get a snapshot by ID.
+
+        Args:
+            snapshot_id: The snapshot ID.
+
+        Returns:
+            The snapshot entity or None if not found.
         """
         ...
 
@@ -119,6 +146,18 @@ class DetectionEventRepository(ABC):
         ...
 
     @abstractmethod
+    async def get_by_id(self, event_id: int) -> DetectionEvent | None:
+        """Get a detection event by ID.
+
+        Args:
+            event_id: The detection event ID.
+
+        Returns:
+            The detection event entity or None if not found.
+        """
+        ...
+
+    @abstractmethod
     async def list_for_watch_target(
         self, watch_target_id: int, limit: int = 50
     ) -> list[DetectionEvent]:
@@ -130,5 +169,77 @@ class DetectionEventRepository(ABC):
 
         Returns:
             A list of detection events.
+        """
+        ...
+
+
+class WatchRepository(ABC):
+    """Repository for managing user watches."""
+
+    @abstractmethod
+    async def list_by_watch_target(self, watch_target_id: int) -> list[Watch]:
+        """List watches for a watch target.
+
+        Args:
+            watch_target_id: The watch target ID.
+
+        Returns:
+            A list of watches for the target.
+        """
+        ...
+
+
+class NotificationChannelRepository(ABC):
+    """Repository for managing user notification channels."""
+
+    @abstractmethod
+    async def list_for_user(self, user_id: int) -> list[NotificationChannel]:
+        """List notification channels for a user.
+
+        Args:
+            user_id: The user ID.
+
+        Returns:
+            A list of notification channels for the user.
+        """
+        ...
+
+
+class NotificationLogRepository(ABC):
+    """Repository for managing notification logs."""
+
+    @abstractmethod
+    async def exists_recent(self, dedup_key: str, cooldown_seconds: int) -> bool:
+        """Check if a notification was recently sent for a dedup key.
+
+        Args:
+            dedup_key: The deduplication key.
+            cooldown_seconds: The cooldown period in seconds.
+
+        Returns:
+            True if a notification with this key was sent within the cooldown period.
+        """
+        ...
+
+    @abstractmethod
+    async def create(
+        self,
+        user_id: int,
+        detection_event_id: int,
+        channel_id: int,
+        status: str,
+        dedup_key: str,
+    ) -> NotificationLog:
+        """Create a new notification log entry.
+
+        Args:
+            user_id: The user ID.
+            detection_event_id: The detection event ID.
+            channel_id: The notification channel ID.
+            status: The notification status (e.g., "sent", "failed").
+            dedup_key: The deduplication key.
+
+        Returns:
+            The created notification log entity.
         """
         ...
