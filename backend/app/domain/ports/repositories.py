@@ -220,6 +220,19 @@ class SnapshotRepository(ABC):
         """
         ...
 
+    @abstractmethod
+    async def list_since(self, watch_target_id: int, since: datetime) -> list[Snapshot]:
+        """List snapshots for a watch target since a given datetime.
+
+        Args:
+            watch_target_id: The watch target ID.
+            since: The datetime to filter from (inclusive).
+
+        Returns:
+            A list of snapshots ordered by timestamp ascending.
+        """
+        ...
+
 
 class DetectionEventRepository(ABC):
     """Repository for managing detection events."""

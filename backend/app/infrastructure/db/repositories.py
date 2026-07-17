@@ -453,6 +453,36 @@ class SqlAlchemySnapshotRepository(SnapshotRepository):
             product_url=model.product_url,
         )
 
+    async def list_since(self, watch_target_id: int, since: datetime) -> list[Snapshot]:
+        """List snapshots for a watch target since a given datetime."""
+        stmt = (
+            select(SnapshotModel)
+            .where(
+                SnapshotModel.watch_target_id == watch_target_id,
+                SnapshotModel.timestamp >= since,
+            )
+            .order_by(SnapshotModel.timestamp.asc())
+        )
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [
+            Snapshot(
+                id=m.id,
+                watch_target_id=m.watch_target_id,
+                timestamp=m.timestamp,
+                availability=Availability(m.availability),
+                price=m.price,
+                mrp=m.mrp,
+                discount_pct=m.discount_pct,
+                eta_minutes=m.eta_minutes,
+                store_name=m.store_name,
+                image_url=m.image_url,
+                quantity_label=m.quantity_label,
+                variants=m.variants,
+                product_url=m.product_url,
+            )
+            for m in models
+        ]
+
 
 class SqlAlchemyDetectionEventRepository(DetectionEventRepository):
     """SQLAlchemy implementation of DetectionEventRepository."""

@@ -89,6 +89,7 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     from app.api.error_logging_middleware import ErrorLoggingMiddleware
+    from app.api.routers.analytics import router as analytics_router
     from app.api.routers.auth import router as auth_router
     from app.api.routers.history import router as history_router
     from app.api.routers.logs import router as logs_router
@@ -102,6 +103,7 @@ def create_app() -> FastAPI:
     application.include_router(auth_router)
     application.include_router(retailers_router)
     application.include_router(history_router)
+    application.include_router(analytics_router)
     application.include_router(products_router)
     application.include_router(watches_router)
     application.include_router(notifications_router)
