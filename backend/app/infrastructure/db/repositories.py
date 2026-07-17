@@ -538,12 +538,15 @@ class SqlAlchemyDetectionEventRepository(DetectionEventRepository):
         )
 
     async def list_for_watch_target(
-        self, watch_target_id: int, limit: int = 50
+        self, watch_target_id: int, limit: int = 50, since: datetime | None = None
     ) -> list[DetectionEvent]:
         """List detection events for a watch target."""
+        conditions = [DetectionEventModel.watch_target_id == watch_target_id]
+        if since is not None:
+            conditions.append(DetectionEventModel.created_at >= since)
         stmt = (
             select(DetectionEventModel)
-            .where(DetectionEventModel.watch_target_id == watch_target_id)
+            .where(*conditions)
             .order_by(DetectionEventModel.created_at.desc())
             .limit(limit)
         )

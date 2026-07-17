@@ -274,16 +274,17 @@ class DetectionEventRepository(ABC):
 
     @abstractmethod
     async def list_for_watch_target(
-        self, watch_target_id: int, limit: int = 50
+        self, watch_target_id: int, limit: int = 50, since: datetime | None = None
     ) -> list[DetectionEvent]:
         """List detection events for a watch target.
 
         Args:
             watch_target_id: The watch target ID.
             limit: Maximum number of events to return.
+            since: If given, only include events with `created_at >= since`.
 
         Returns:
-            A list of detection events.
+            A list of detection events, most recent first.
         """
         ...
 
