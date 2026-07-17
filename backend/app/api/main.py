@@ -3,6 +3,7 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import redis.asyncio as redis
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -27,16 +28,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     - Initialize logging
     - Create the database engine
     - Store engine and session factory in app.state
+    - Create a shared Redis client and store it in app.state
     - Seed retailers into the database
 
     On shutdown:
     - Dispose of the engine
+    - Close the shared Redis client
     """
     settings = get_settings()
     configure_logging(settings)
     engine = get_engine(settings.database_url)
     app.state.engine = engine
     app.state.session_factory = get_sessionmaker(engine)
+    app.state.redis_client = redis.from_url(settings.redis_url)
 
     async with app.state.session_factory() as session:
         from app.infrastructure.db.seed import ensure_retailers_seeded
@@ -54,6 +58,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             )
 
     yield
+    await app.state.redis_client.aclose()
     await engine.dispose()
 
 

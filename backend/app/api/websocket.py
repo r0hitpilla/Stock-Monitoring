@@ -2,18 +2,15 @@
 
 from typing import AsyncIterator
 
-import redis.asyncio as redis
 import structlog
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 
 from app.api.deps import get_auth_service
 from app.application.auth_service import AuthService
 from app.application.exceptions import InvalidTokenError
-from app.core.config import get_settings
 from app.domain.ports.repositories import WatchRepository
 from app.infrastructure.cache.redis_subscriber import RedisSubscriber
 from app.infrastructure.db.repositories import SqlAlchemyWatchRepository
-from app.infrastructure.db.session import get_engine, get_sessionmaker
 
 logger = structlog.get_logger(__name__)
 
@@ -21,36 +18,38 @@ router = APIRouter()
 
 
 async def get_watch_repository(websocket: WebSocket) -> AsyncIterator[WatchRepository]:
-    """Yield a `WatchRepository` backed by a fresh database session.
+    """Yield a `WatchRepository` backed by a session from the app-wide session factory.
 
     Args:
-        websocket: The connecting WebSocket (unused directly, but required so
-            FastAPI resolves this as a WebSocket-scoped dependency).
+        websocket: The connecting WebSocket, used to reach the shared
+            `session_factory` built once at app startup (see `app.api.main.lifespan`).
 
     Yields:
         A `SqlAlchemyWatchRepository` bound to a session that is closed
-        when the dependency scope exits.
+        when the dependency scope exits. The underlying engine/connection
+        pool is reused across connections rather than rebuilt per-connection.
     """
-    settings = get_settings()
-    engine = get_engine(settings.database_url)
-    session_factory = get_sessionmaker(engine)
+    session_factory = websocket.app.state.session_factory
     async with session_factory() as session:
         yield SqlAlchemyWatchRepository(session)
 
 
-def get_redis_subscriber() -> RedisSubscriber:
-    """Return a `RedisSubscriber` backed by a Redis client from settings.
+def get_redis_subscriber(websocket: WebSocket) -> RedisSubscriber:
+    """Return a `RedisSubscriber` backed by the app-wide shared Redis client.
+
+    Args:
+        websocket: The connecting WebSocket, used to reach the shared
+            `redis_client` built once at app startup (see `app.api.main.lifespan`)
+            and closed at shutdown.
 
     Returns:
-        A `RedisSubscriber` wrapping a `redis.asyncio.Redis` client built
-        from the configured `redis_url`.
+        A `RedisSubscriber` wrapping the shared `redis.asyncio.Redis` client.
     """
-    settings = get_settings()
     # redis-py's PubSub/Redis types don't structurally match our minimal
     # RedisClientLike/PubSubLike protocols exactly (extra kwargs, differing
     # return types); structurally compatible at runtime. See the same
     # pattern in app/monitor/main.py for RedisEventPublisher.
-    return RedisSubscriber(redis.from_url(settings.redis_url))  # type: ignore[arg-type]
+    return RedisSubscriber(websocket.app.state.redis_client)  # type: ignore[arg-type]
 
 
 @router.websocket("/ws")
