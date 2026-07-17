@@ -72,5 +72,5 @@ class EmailSender(NotificationSender):
                 smtp.login(self._smtp_username, self._smtp_password)
                 smtp.send_message(message)
             return True
-        except OSError:
+        except (OSError, smtplib.SMTPException):
             return False
