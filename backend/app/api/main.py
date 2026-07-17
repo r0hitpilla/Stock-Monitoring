@@ -90,11 +90,15 @@ def create_app() -> FastAPI:
 
     from app.api.routers.auth import router as auth_router
     from app.api.routers.history import router as history_router
+    from app.api.routers.products import router as products_router
     from app.api.routers.retailers import router as retailers_router
+    from app.api.routers.watches import router as watches_router
 
     application.include_router(auth_router)
     application.include_router(retailers_router)
     application.include_router(history_router)
+    application.include_router(products_router)
+    application.include_router(watches_router)
 
     return application
 

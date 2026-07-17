@@ -8,6 +8,7 @@ from app.domain.entities import (
     NotificationChannel,
     NotificationLog,
     OtpChallenge,
+    Product,
     ProviderProductResult,
     Retailer,
     Snapshot,
@@ -285,8 +286,79 @@ class RetailerRepository(ABC):
         ...
 
 
+class ProductRepository(ABC):
+    """Repository for managing user products."""
+
+    @abstractmethod
+    async def create(
+        self, user_id: int, name: str, keyword: str, canonical_image_url: str | None
+    ) -> Product:
+        """Create a new product.
+
+        Args:
+            user_id: The user ID.
+            name: The product name.
+            keyword: The search keyword for the product.
+            canonical_image_url: Optional URL of the product image.
+
+        Returns:
+            The created product entity.
+        """
+        ...
+
+    @abstractmethod
+    async def list_for_user(self, user_id: int) -> list[Product]:
+        """List products for a user.
+
+        Args:
+            user_id: The user ID.
+
+        Returns:
+            A list of products for the user.
+        """
+        ...
+
+    @abstractmethod
+    async def get_by_id(self, product_id: int) -> Product | None:
+        """Get a product by ID.
+
+        Args:
+            product_id: The product ID.
+
+        Returns:
+            The product entity or None if not found.
+        """
+        ...
+
+    @abstractmethod
+    async def delete(self, product_id: int) -> None:
+        """Delete a product.
+
+        Args:
+            product_id: The product ID.
+        """
+        ...
+
+
 class WatchRepository(ABC):
     """Repository for managing user watches."""
+
+    @abstractmethod
+    async def create(
+        self, user_id: int, product_id: int, watch_target_id: int, interval_seconds: int
+    ) -> Watch:
+        """Create a new watch.
+
+        Args:
+            user_id: The user ID.
+            product_id: The product ID.
+            watch_target_id: The watch target ID.
+            interval_seconds: The check interval in seconds.
+
+        Returns:
+            The created watch entity.
+        """
+        ...
 
     @abstractmethod
     async def list_by_watch_target(self, watch_target_id: int) -> list[Watch]:
@@ -301,6 +373,18 @@ class WatchRepository(ABC):
         ...
 
     @abstractmethod
+    async def list_for_user(self, user_id: int) -> list[Watch]:
+        """List watches for a user.
+
+        Args:
+            user_id: The user ID.
+
+        Returns:
+            A list of watches for the user.
+        """
+        ...
+
+    @abstractmethod
     async def get_by_id(self, watch_id: int) -> Watch | None:
         """Get a watch by ID.
 
@@ -309,6 +393,15 @@ class WatchRepository(ABC):
 
         Returns:
             The watch entity or None if not found.
+        """
+        ...
+
+    @abstractmethod
+    async def deactivate(self, watch_id: int) -> None:
+        """Deactivate a watch (soft-delete).
+
+        Args:
+            watch_id: The watch ID.
         """
         ...
 

@@ -78,6 +78,17 @@ class DetectionEvent:
 
 
 @dataclass
+class Product:
+    """A product that a user is watching."""
+
+    id: int | None
+    user_id: int
+    name: str
+    keyword: str
+    canonical_image_url: str | None = None
+
+
+@dataclass
 class Watch:
     """A user's watch for a product at a location."""
 

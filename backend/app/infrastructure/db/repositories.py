@@ -10,6 +10,7 @@ from app.domain.entities import (
     NotificationChannel,
     NotificationLog,
     OtpChallenge,
+    Product,
     ProviderProductResult,
     Retailer,
     Snapshot,
@@ -23,6 +24,7 @@ from app.domain.ports.repositories import (
     NotificationChannelRepository,
     NotificationLogRepository,
     OtpChallengeRepository,
+    ProductRepository,
     RetailerRepository,
     SnapshotRepository,
     UserRepository,
@@ -34,6 +36,7 @@ from app.infrastructure.db.models import (
     NotificationChannelModel,
     NotificationLogModel,
     OtpChallengeModel,
+    ProductModel,
     RetailerModel,
     SnapshotModel,
     UserModel,
@@ -72,6 +75,17 @@ def _to_retailer(model: RetailerModel) -> Retailer:
         slug=model.slug,
         name=model.name,
         is_active=model.is_active,
+    )
+
+
+def _to_product(model: ProductModel) -> Product:
+    """Convert a ProductModel to a Product entity."""
+    return Product(
+        id=model.id,
+        user_id=model.user_id,
+        name=model.name,
+        keyword=model.keyword,
+        canonical_image_url=model.canonical_image_url,
     )
 
 
@@ -192,6 +206,65 @@ class SqlAlchemyRetailerRepository(RetailerRepository):
         stmt = select(RetailerModel)
         models = (await self._session.execute(stmt)).scalars().all()
         return [_to_retailer(m) for m in models]
+
+
+class SqlAlchemyProductRepository(ProductRepository):
+    """SQLAlchemy implementation of ProductRepository."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        """Initialize with an async session.
+
+        Args:
+            session: The SQLAlchemy async session.
+        """
+        self._session = session
+
+    async def create(
+        self, user_id: int, name: str, keyword: str, canonical_image_url: str | None
+    ) -> Product:
+        """Create a new product."""
+        model = ProductModel(
+            user_id=user_id,
+            name=name,
+            keyword=keyword,
+            canonical_image_url=canonical_image_url,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return _to_product(model)
+
+    async def list_for_user(self, user_id: int) -> list[Product]:
+        """List products for a user."""
+        stmt = select(ProductModel).where(ProductModel.user_id == user_id)
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [_to_product(m) for m in models]
+
+    async def get_by_id(self, product_id: int) -> Product | None:
+        """Get a product by ID."""
+        stmt = select(ProductModel).where(ProductModel.id == product_id)
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        if model is None:
+            return None
+        return _to_product(model)
+
+    async def delete(self, product_id: int) -> None:
+        """Delete a product."""
+        stmt = select(ProductModel).where(ProductModel.id == product_id)
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        if model is not None:
+            await self._session.delete(model)
+
+
+def _to_watch(model: WatchModel) -> Watch:
+    """Convert a WatchModel to a Watch entity."""
+    return Watch(
+        id=model.id,
+        user_id=model.user_id,
+        product_id=model.product_id,
+        watch_target_id=model.watch_target_id,
+        interval_seconds=model.interval_seconds,
+        is_active=model.is_active,
+    )
 
 
 def _to_watch_target(model: WatchTargetModel) -> WatchTarget:
@@ -463,6 +536,20 @@ class SqlAlchemyWatchRepository(WatchRepository):
         """
         self._session = session
 
+    async def create(
+        self, user_id: int, product_id: int, watch_target_id: int, interval_seconds: int
+    ) -> Watch:
+        """Create a new watch."""
+        model = WatchModel(
+            user_id=user_id,
+            product_id=product_id,
+            watch_target_id=watch_target_id,
+            interval_seconds=interval_seconds,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return _to_watch(model)
+
     async def list_by_watch_target(self, watch_target_id: int) -> list[Watch]:
         """List watches for a watch target."""
         stmt = select(WatchModel).where(
@@ -470,17 +557,13 @@ class SqlAlchemyWatchRepository(WatchRepository):
             WatchModel.is_active.is_(True),
         )
         models = (await self._session.execute(stmt)).scalars().all()
-        return [
-            Watch(
-                id=m.id,
-                user_id=m.user_id,
-                product_id=m.product_id,
-                watch_target_id=m.watch_target_id,
-                interval_seconds=m.interval_seconds,
-                is_active=m.is_active,
-            )
-            for m in models
-        ]
+        return [_to_watch(m) for m in models]
+
+    async def list_for_user(self, user_id: int) -> list[Watch]:
+        """List watches for a user."""
+        stmt = select(WatchModel).where(WatchModel.user_id == user_id)
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [_to_watch(m) for m in models]
 
     async def get_by_id(self, watch_id: int) -> Watch | None:
         """Get a watch by ID."""
@@ -488,14 +571,14 @@ class SqlAlchemyWatchRepository(WatchRepository):
         model = (await self._session.execute(stmt)).scalar_one_or_none()
         if model is None:
             return None
-        return Watch(
-            id=model.id,
-            user_id=model.user_id,
-            product_id=model.product_id,
-            watch_target_id=model.watch_target_id,
-            interval_seconds=model.interval_seconds,
-            is_active=model.is_active,
-        )
+        return _to_watch(model)
+
+    async def deactivate(self, watch_id: int) -> None:
+        """Deactivate a watch (soft-delete)."""
+        stmt = select(WatchModel).where(WatchModel.id == watch_id)
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        if model is not None:
+            model.is_active = False
 
 
 class SqlAlchemyNotificationChannelRepository(NotificationChannelRepository):
