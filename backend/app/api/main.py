@@ -68,6 +68,10 @@ def create_app() -> FastAPI:
         """
         return {"status": "ok"}
 
+    from app.api.routers.auth import router as auth_router
+
+    application.include_router(auth_router)
+
     return application
 
 
