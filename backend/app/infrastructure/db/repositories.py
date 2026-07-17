@@ -1,6 +1,7 @@
 """SQLAlchemy implementations of repository interfaces."""
 
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,7 @@ from app.domain.entities import (
     ProviderProductResult,
     Retailer,
     Snapshot,
+    SystemLog,
     User,
     Watch,
     WatchTarget,
@@ -26,7 +28,9 @@ from app.domain.ports.repositories import (
     OtpChallengeRepository,
     ProductRepository,
     RetailerRepository,
+    SettingsRepository,
     SnapshotRepository,
+    SystemLogRepository,
     UserRepository,
     WatchRepository,
     WatchTargetRepository,
@@ -38,7 +42,9 @@ from app.infrastructure.db.models import (
     OtpChallengeModel,
     ProductModel,
     RetailerModel,
+    SettingsModel,
     SnapshotModel,
+    SystemLogModel,
     UserModel,
     WatchModel,
     WatchTargetModel,
@@ -581,6 +587,30 @@ class SqlAlchemyWatchRepository(WatchRepository):
             model.is_active = False
 
 
+def _to_notification_channel(model: NotificationChannelModel) -> NotificationChannel:
+    """Convert a NotificationChannelModel to a NotificationChannel entity."""
+    return NotificationChannel(
+        id=model.id,
+        user_id=model.user_id,
+        type=NotificationChannelType(model.type),
+        config=model.config_json,
+        is_verified=model.is_verified,
+    )
+
+
+def _to_notification_log(model: NotificationLogModel) -> NotificationLog:
+    """Convert a NotificationLogModel to a NotificationLog entity."""
+    return NotificationLog(
+        id=model.id,
+        user_id=model.user_id,
+        detection_event_id=model.detection_event_id,
+        channel_id=model.channel_id,
+        status=model.status,
+        sent_at=model.sent_at,
+        dedup_key=model.dedup_key,
+    )
+
+
 class SqlAlchemyNotificationChannelRepository(NotificationChannelRepository):
     """SQLAlchemy implementation of NotificationChannelRepository."""
 
@@ -592,22 +622,58 @@ class SqlAlchemyNotificationChannelRepository(NotificationChannelRepository):
         """
         self._session = session
 
+    async def create(
+        self,
+        user_id: int,
+        type: NotificationChannelType,
+        config: dict[str, Any],
+        is_verified: bool = False,
+    ) -> NotificationChannel:
+        """Create a new notification channel for a user."""
+        model = NotificationChannelModel(
+            user_id=user_id,
+            type=type.value,
+            config_json=config,
+            is_verified=is_verified,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return _to_notification_channel(model)
+
     async def list_for_user(self, user_id: int) -> list[NotificationChannel]:
         """List notification channels for a user."""
         stmt = select(NotificationChannelModel).where(
             NotificationChannelModel.user_id == user_id
         )
         models = (await self._session.execute(stmt)).scalars().all()
-        return [
-            NotificationChannel(
-                id=m.id,
-                user_id=m.user_id,
-                type=NotificationChannelType(m.type),
-                config=m.config_json,
-                is_verified=m.is_verified,
-            )
-            for m in models
-        ]
+        return [_to_notification_channel(m) for m in models]
+
+    async def get_by_id(self, channel_id: int) -> NotificationChannel | None:
+        """Get a notification channel by ID."""
+        stmt = select(NotificationChannelModel).where(
+            NotificationChannelModel.id == channel_id
+        )
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        if model is None:
+            return None
+        return _to_notification_channel(model)
+
+    async def delete(self, channel_id: int) -> None:
+        """Delete a notification channel."""
+        stmt = select(NotificationChannelModel).where(
+            NotificationChannelModel.id == channel_id
+        )
+        model = (await self._session.execute(stmt)).scalar_one_or_none()
+        if model is not None:
+            await self._session.delete(model)
+
+    async def mark_verified(self, channel_id: int) -> None:
+        """Mark a notification channel as verified."""
+        stmt = select(NotificationChannelModel).where(
+            NotificationChannelModel.id == channel_id
+        )
+        model = (await self._session.execute(stmt)).scalar_one()
+        model.is_verified = True
 
 
 class SqlAlchemyNotificationLogRepository(NotificationLogRepository):
@@ -649,12 +715,107 @@ class SqlAlchemyNotificationLogRepository(NotificationLogRepository):
         )
         self._session.add(model)
         await self._session.flush()
-        return NotificationLog(
-            id=model.id,
-            user_id=model.user_id,
-            detection_event_id=model.detection_event_id,
-            channel_id=model.channel_id,
-            status=model.status,
-            sent_at=model.sent_at,
-            dedup_key=model.dedup_key,
+        return _to_notification_log(model)
+
+    async def list_for_user(
+        self, user_id: int, limit: int = 50
+    ) -> list[NotificationLog]:
+        """List notification log entries for a user, most recent first."""
+        stmt = (
+            select(NotificationLogModel)
+            .where(NotificationLogModel.user_id == user_id)
+            .order_by(NotificationLogModel.sent_at.desc())
+            .limit(limit)
         )
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [_to_notification_log(m) for m in models]
+
+
+class SqlAlchemySettingsRepository(SettingsRepository):
+    """SQLAlchemy implementation of SettingsRepository.
+
+    Settings are stored as user-scoped key/value rows (see `SettingsModel`),
+    not as a single JSON blob per user.
+    """
+
+    def __init__(self, session: AsyncSession) -> None:
+        """Initialize with an async session.
+
+        Args:
+            session: The SQLAlchemy async session.
+        """
+        self._session = session
+
+    async def get_for_user(self, user_id: int) -> dict[str, Any]:
+        """Get all settings for a user as a key/value mapping."""
+        stmt = select(SettingsModel).where(SettingsModel.user_id == user_id)
+        models = (await self._session.execute(stmt)).scalars().all()
+        return {m.key: m.value_json for m in models}
+
+    async def set_for_user(self, user_id: int, key: str, value: Any) -> None:
+        """Set (create or update) a single setting for a user."""
+        stmt = select(SettingsModel).where(
+            SettingsModel.user_id == user_id, SettingsModel.key == key
+        )
+        existing = (await self._session.execute(stmt)).scalar_one_or_none()
+        if existing is not None:
+            existing.value_json = value
+        else:
+            model = SettingsModel(user_id=user_id, key=key, value_json=value)
+            self._session.add(model)
+        await self._session.flush()
+
+
+class SqlAlchemySystemLogRepository(SystemLogRepository):
+    """SQLAlchemy implementation of SystemLogRepository."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        """Initialize with an async session.
+
+        Args:
+            session: The SQLAlchemy async session.
+        """
+        self._session = session
+
+    async def create(
+        self,
+        level: str,
+        message: str,
+        context: dict[str, Any],
+        at: datetime,
+    ) -> SystemLog:
+        """Create a new system log entry."""
+        model = SystemLogModel(
+            level=level,
+            message=message,
+            context=context,
+            created_at=at,
+        )
+        self._session.add(model)
+        await self._session.flush()
+        return SystemLog(
+            id=model.id,
+            level=model.level,
+            message=model.message,
+            context=model.context,
+            created_at=model.created_at,
+        )
+
+    async def list_recent(self, limit: int = 100) -> list[SystemLog]:
+        """List the most recent system log entries."""
+        stmt = (
+            select(SystemLogModel)
+            .order_by(SystemLogModel.created_at.desc())
+            .limit(limit)
+        )
+        models = (await self._session.execute(stmt)).scalars().all()
+        return [
+            SystemLog(
+                id=m.id,
+                level=m.level,
+                message=m.message,
+                context=m.context,
+                created_at=m.created_at,
+            )
+            for m in models
+        ]

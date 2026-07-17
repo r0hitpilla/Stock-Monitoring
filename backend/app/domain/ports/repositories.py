@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import Any
 
 from app.domain.entities import (
     DetectionEvent,
@@ -12,11 +13,12 @@ from app.domain.entities import (
     ProviderProductResult,
     Retailer,
     Snapshot,
+    SystemLog,
     User,
     Watch,
     WatchTarget,
 )
-from app.domain.enums import EventType
+from app.domain.enums import EventType, NotificationChannelType
 
 
 class UserRepository(ABC):
@@ -410,6 +412,27 @@ class NotificationChannelRepository(ABC):
     """Repository for managing user notification channels."""
 
     @abstractmethod
+    async def create(
+        self,
+        user_id: int,
+        type: NotificationChannelType,
+        config: dict[str, Any],
+        is_verified: bool = False,
+    ) -> NotificationChannel:
+        """Create a new notification channel for a user.
+
+        Args:
+            user_id: The user ID.
+            type: The notification channel type.
+            config: Channel-specific configuration (e.g. chat_id, webhook URL).
+            is_verified: Whether the channel starts out verified. Defaults to False.
+
+        Returns:
+            The created notification channel entity.
+        """
+        ...
+
+    @abstractmethod
     async def list_for_user(self, user_id: int) -> list[NotificationChannel]:
         """List notification channels for a user.
 
@@ -418,6 +441,36 @@ class NotificationChannelRepository(ABC):
 
         Returns:
             A list of notification channels for the user.
+        """
+        ...
+
+    @abstractmethod
+    async def get_by_id(self, channel_id: int) -> NotificationChannel | None:
+        """Get a notification channel by ID.
+
+        Args:
+            channel_id: The notification channel ID.
+
+        Returns:
+            The notification channel entity or None if not found.
+        """
+        ...
+
+    @abstractmethod
+    async def delete(self, channel_id: int) -> None:
+        """Delete a notification channel.
+
+        Args:
+            channel_id: The notification channel ID.
+        """
+        ...
+
+    @abstractmethod
+    async def mark_verified(self, channel_id: int) -> None:
+        """Mark a notification channel as verified.
+
+        Args:
+            channel_id: The notification channel ID.
         """
         ...
 
@@ -458,5 +511,84 @@ class NotificationLogRepository(ABC):
 
         Returns:
             The created notification log entity.
+        """
+        ...
+
+    @abstractmethod
+    async def list_for_user(
+        self, user_id: int, limit: int = 50
+    ) -> list[NotificationLog]:
+        """List notification log entries for a user, most recent first.
+
+        Args:
+            user_id: The user ID.
+            limit: Maximum number of entries to return.
+
+        Returns:
+            A list of notification log entries for the user.
+        """
+        ...
+
+
+class SettingsRepository(ABC):
+    """Repository for managing user-scoped key/value settings."""
+
+    @abstractmethod
+    async def get_for_user(self, user_id: int) -> dict[str, Any]:
+        """Get all settings for a user as a key/value mapping.
+
+        Args:
+            user_id: The user ID.
+
+        Returns:
+            A dict mapping setting key to value.
+        """
+        ...
+
+    @abstractmethod
+    async def set_for_user(self, user_id: int, key: str, value: Any) -> None:
+        """Set (create or update) a single setting for a user.
+
+        Args:
+            user_id: The user ID.
+            key: The setting key.
+            value: The setting value (any JSON-serializable value).
+        """
+        ...
+
+
+class SystemLogRepository(ABC):
+    """Repository for managing system-level log entries."""
+
+    @abstractmethod
+    async def create(
+        self,
+        level: str,
+        message: str,
+        context: dict[str, Any],
+        at: datetime,
+    ) -> SystemLog:
+        """Create a new system log entry.
+
+        Args:
+            level: The log level (e.g. "error").
+            message: The log message.
+            context: Additional structured context (e.g. request path).
+            at: The datetime the log entry was created.
+
+        Returns:
+            The created system log entity.
+        """
+        ...
+
+    @abstractmethod
+    async def list_recent(self, limit: int = 100) -> list[SystemLog]:
+        """List the most recent system log entries.
+
+        Args:
+            limit: Maximum number of entries to return.
+
+        Returns:
+            A list of system log entries, most recent first.
         """
         ...

@@ -155,11 +155,23 @@ class NotificationLogModel(Base):
 
 
 class SettingsModel(Base):
-    """Global and user-specific settings."""
+    """Global and user-specific settings, stored as key/value rows."""
 
     __tablename__ = "settings"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     key: Mapped[str]
-    value_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    value_json: Mapped[Any] = mapped_column(JSON, default=dict)
+
+
+class SystemLogModel(Base):
+    """System-level log entry (e.g. an unhandled request error)."""
+
+    __tablename__ = "system_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    level: Mapped[str]
+    message: Mapped[str]
+    context: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime]

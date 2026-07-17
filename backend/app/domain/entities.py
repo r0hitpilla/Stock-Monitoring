@@ -173,3 +173,14 @@ class Retailer:
     slug: str
     name: str
     is_active: bool = True
+
+
+@dataclass
+class SystemLog:
+    """A system-level log entry (e.g. an unhandled request error)."""
+
+    id: int | None
+    level: str
+    message: str
+    context: dict[str, Any]
+    created_at: datetime

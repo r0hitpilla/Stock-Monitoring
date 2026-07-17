@@ -155,10 +155,19 @@ def upgrade() -> None:
         sa.Column("key", sa.String, nullable=False),
         sa.Column("value_json", sa.JSON, nullable=False, default=dict),
     )
+    op.create_table(
+        "system_logs",
+        sa.Column("id", sa.Integer, primary_key=True),
+        sa.Column("level", sa.String, nullable=False),
+        sa.Column("message", sa.String, nullable=False),
+        sa.Column("context", sa.JSON, nullable=False, default=dict),
+        sa.Column("created_at", sa.DateTime, nullable=False),
+    )
 
 
 def downgrade() -> None:
     for table in [
+        "system_logs",
         "settings",
         "notification_logs",
         "notification_channels",
