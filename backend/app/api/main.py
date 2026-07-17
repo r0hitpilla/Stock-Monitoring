@@ -98,6 +98,7 @@ def create_app() -> FastAPI:
     from app.api.routers.retailers import router as retailers_router
     from app.api.routers.settings import router as settings_router
     from app.api.routers.watches import router as watches_router
+    from app.api.websocket import router as websocket_router
 
     application.add_middleware(ErrorLoggingMiddleware)
     application.include_router(auth_router)
@@ -109,6 +110,7 @@ def create_app() -> FastAPI:
     application.include_router(notifications_router)
     application.include_router(settings_router)
     application.include_router(logs_router)
+    application.include_router(websocket_router)
 
     return application
 
